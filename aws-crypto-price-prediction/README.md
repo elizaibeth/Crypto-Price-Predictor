@@ -1,31 +1,8 @@
-# Bitcoin Price Prediction Engine
+# Historical Lambda prototype
 
-Lets all loose money together - using python and to be deployed as a lambda on AWS
+This directory preserves the original 2023 implementation for reference. It is
+not the supported execution or deployment path. See the [root README](../README.md)
+for the local CLI, Docker workflow and evaluation methodology.
 
-# Install
-
-Create a new virtual environment by running the command `python3 -m venv env`.
-
-Activate the virtual environment by running the command `source env/bin/activate`.
-
-Install all the required packages in the virtual environment by running the command `python3 -m pip install -r requirements.txt` ....
-
-You must always run this pip install when you add new requirements
-
-# Run Locally 
-In the root run
-
-```
-serverless invoke local --function lambda_handler
-```
-
-or 
-
-```
-serverless invoke local --data '{"body": "{\"ticker\":\"BTC-USD\"\n}"}' --function lambda_handler
-```
-
-# Deploy to Lambda
-```
-serverless deploy --aws-profile default --region eu-west-2  
-```
+Known limitations include scaling before splitting, unused test predictions,
+retraining per request, inconsistent responses and unmaintained dependencies.

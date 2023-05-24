@@ -1,0 +1,2 @@
+-r requirements-online.txt
+tensorflow==2.12.0

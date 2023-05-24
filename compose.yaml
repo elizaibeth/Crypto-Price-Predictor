@@ -1,0 +1,47 @@
+services:
+  research:
+    profiles: [research]
+    build:
+      context: .
+      target: research
+    volumes:
+      - ./artifacts:/app/artifacts
+    entrypoint: [python, -m, crypto_predictor.research]
+    command: [--max-loops, "10"]
+
+  replay:
+    profiles: [offline]
+    build:
+      context: .
+      target: baseline
+    volumes:
+      - ./artifacts:/app/artifacts
+    command:
+      - --csv
+      - artifacts/btc.prices.csv
+      - --model
+      - auto
+      - --output
+      - artifacts/replay-auto.json
+
+  demo:
+    profiles: [demo]
+    build:
+      context: .
+      target: baseline
+    volumes:
+      - ./artifacts:/app/artifacts
+
+  predictor:
+    build:
+      context: .
+      target: research
+    volumes:
+      - ./artifacts:/app/artifacts
+    command:
+      - --ticker
+      - BTC-USD
+      - --model
+      - direction
+      - --output
+      - artifacts/btc-direction.json
