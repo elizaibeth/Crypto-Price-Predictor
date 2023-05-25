@@ -7,6 +7,11 @@ import pandas as pd
 from .pipeline import validate_prices
 
 
+# Keep a long research window in the cache. The CLI can still select a shorter
+# training window (365 days by default) without throwing away older cycles.
+CACHE_HISTORY_YEARS = 12
+
+
 class DataUnavailable(ValueError):
     """The remote provider could not supply usable data."""
 
@@ -49,7 +54,7 @@ def load_prices(ticker, cache_path=Path("artifacts/prices.sqlite3"), *, full_ref
             connection, params=(ticker, end),
         )
         cached["Date"] = pd.to_datetime(cached["Date"], utc=True)
-        cutoff = today - pd.DateOffset(years=10)
+        cutoff = today - pd.DateOffset(years=CACHE_HISTORY_YEARS)
         start = cutoff
         gaps = []
         if not cached.empty:

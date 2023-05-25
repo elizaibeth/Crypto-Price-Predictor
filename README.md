@@ -23,8 +23,9 @@ docker compose up --build
 direction model automatically. Pass `--ticker ETH-USD` or `--model auto` to
 override them.
 
-The first run downloads ten years of Yahoo Finance `BTC-USD` daily closes; later
-runs update the persistent SQLite cache. Training and evaluation use the latest
+The first run requests up to twelve years of Yahoo Finance `BTC-USD` daily
+closes (Yahoo may return less for dates before the asset was listed); later runs
+update the persistent SQLite cache. Training and evaluation use the latest
 **365 days by default**. Each run trains, calibrates and evaluates a directional
 model per horizon, then writes:
 
@@ -76,6 +77,12 @@ or alter confidence gates. Pass another positive number to override it. Omit
 leaves only 73 validation and 73 final-test targets. A shorter history is a research
 choice, not a guarantee of more reliable calls. See the
 [recorded one-year comparison](docs/one-year-comparison.md).
+
+The cache keeps up to twelve years so cycle studies can include multiple bull,
+bear and halving-era regimes. To train on the full cached window, pass an
+explicit value such as `--history-days 4380`; the default remains one year so
+recent market behavior is not diluted by older regimes. Compare windows with
+walk-forward evaluation before treating a longer history as an improvement.
 
 | Label | Meaning |
 | --- | --- |
@@ -156,7 +163,7 @@ docker compose run --rm predictor --ticker BTC-USD --full-refresh --model direct
 ```
 
 `--cache PATH` selects another SQLite file. `--offline` and `--full-refresh` cannot
-be combined. A full refresh covers at least ten years and any older stored rows.
+be combined. A full refresh covers up to twelve years and any older stored rows.
 CSV input bypasses the cache; experiment snapshots remain immutable inputs when
 you save them under distinct filenames.
 

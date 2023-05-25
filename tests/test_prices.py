@@ -30,7 +30,7 @@ class CacheTests(unittest.TestCase):
     def test_initial_load_and_incremental_overlap_updates_without_duplicates(self):
         fetch = Mock(return_value=prices())
         self.load(fetch)
-        fetch.assert_called_once_with('BTC-USD', '2014-01-11', '2024-01-11')
+        fetch.assert_called_once_with('BTC-USD', '2012-01-11', '2024-01-11')
         update = Mock(return_value=prices('2024-01-04', '2024-01-12', value=200))
         frame, metadata = load_prices('btc-usd', self.path, today='2024-01-13', downloader=update,
                                       progress=lambda _: None)
@@ -92,7 +92,7 @@ class CacheTests(unittest.TestCase):
         self.seed()
         fetch = Mock(return_value=prices(value=300))
         frame, _ = self.load(fetch, full_refresh=True)
-        fetch.assert_called_once_with('BTC-USD', '2014-01-11', '2024-01-11')
+        fetch.assert_called_once_with('BTC-USD', '2012-01-11', '2024-01-11')
         self.assertEqual(frame['Close'].iloc[0], 300)
 
     def test_tickers_are_isolated(self):
