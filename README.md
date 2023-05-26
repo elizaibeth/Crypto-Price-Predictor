@@ -84,6 +84,13 @@ explicit value such as `--history-days 4380`; the default remains one year so
 recent market behavior is not diluted by older regimes. Compare windows with
 walk-forward evaluation before treating a longer history as an improvement.
 
+When complete `Open`, `High`, `Low`, `Close` and `Volume` bars are available, the
+directional model also uses candle range, candle body, close position, volume
+change and rolling volatility features. Every feature is calculated from the
+completed candle and earlier candles only. Existing close-only caches and CSVs
+continue to work with the close-return feature set; run `--full-refresh` once to
+populate OHLCV context for an older cache.
+
 | Label | Meaning |
 | --- | --- |
 | `up` | Qualified model assigns enough probability to a rise beyond the flat band |

@@ -55,6 +55,22 @@ class DirectionDecisionTests(unittest.TestCase):
 
 
 class DirectionExperimentTests(unittest.TestCase):
+    def test_ohlcv_features_use_completed_candle_without_future_leakage(self):
+        import numpy as np
+        import pandas as pd
+        from crypto_predictor.direction import direction_features
+        n = 600
+        close = 100 * np.exp(np.arange(n) * .001)
+        frame = pd.DataFrame({'Date': pd.date_range('2020-01-01', periods=n),
+                              'Open': close * .999, 'High': close * 1.02,
+                              'Low': close * .98, 'Close': close,
+                              'Volume': np.arange(n) + 1000.})
+        changed = frame.copy()
+        changed.loc[301:, ['Open', 'High', 'Low', 'Close', 'Volume']] *= 2
+        original, altered = direction_features(frame), direction_features(changed)
+        self.assertGreater(original.shape[1], 18)
+        np.testing.assert_allclose(original[:301], altered[:301])
+
     def test_predictable_three_class_series_can_qualify_and_report_coverage(self):
         import numpy as np
         import pandas as pd

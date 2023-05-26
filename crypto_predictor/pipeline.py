@@ -9,13 +9,27 @@ from sklearn.preprocessing import MinMaxScaler
 def validate_prices(frame):
     if not {"Date", "Close"}.issubset(frame.columns):
         raise ValueError("Input must contain Date and Close columns")
-    frame = frame[["Date", "Close"]].copy()
+    optional = [column for column in ("Open", "High", "Low", "Volume") if column in frame.columns]
+    if optional and set(optional) != {"Open", "High", "Low", "Volume"}:
+        raise ValueError("OHLCV input must contain Open, High, Low and Volume together")
+    frame = frame[["Date", "Open", "High", "Low", "Close", "Volume"] if optional else ["Date", "Close"]].copy()
     frame["Date"] = pd.to_datetime(frame["Date"], errors="raise", utc=True)
     frame["Close"] = pd.to_numeric(frame["Close"], errors="raise")
     if frame.empty or frame.isna().any().any():
         raise ValueError("Prices must be nonempty with no missing dates or closes")
     if not np.isfinite(frame["Close"]).all() or (frame["Close"] <= 0).any():
         raise ValueError("Close prices must be finite and positive")
+    if optional:
+        for column in optional:
+            frame[column] = pd.to_numeric(frame[column], errors="raise")
+        if not np.isfinite(frame[optional].to_numpy()).all():
+            raise ValueError("OHLCV values must be finite")
+        if (frame[["Open", "High", "Low", "Close"]] <= 0).any().any() or (frame.Volume < 0).any():
+            raise ValueError("Prices must be positive; volume must be nonnegative")
+        if ((frame.Low > frame[["Open", "Close"]].min(axis=1)) |
+            (frame.High < frame[["Open", "Close"]].max(axis=1)) |
+            (frame.High < frame.Low)).any():
+            raise ValueError("Inconsistent daily high/low bounds")
     frame = frame.sort_values("Date").reset_index(drop=True)
     if frame["Date"].duplicated().any():
         raise ValueError("Duplicate dates are not allowed")

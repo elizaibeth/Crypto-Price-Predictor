@@ -13,6 +13,7 @@ from threadpoolctl import threadpool_limits
 
 from .pipeline import validate_prices
 from .search import features
+from .research import make_features
 
 
 
@@ -54,6 +55,23 @@ CLASSES = ('down', 'same', 'up')
 DEFAULT_BANDS = {1: .01, 7: .03, 28: .05}
 
 
+def direction_features(frame, lags=14):
+    """Build close-only or OHLCV features without using future candles.
+
+    Existing close-only CSVs remain supported. When complete OHLCV columns are
+    present, the research feature set adds candle range, body, position and
+    volume context to the close-return features.
+    """
+    frame = validate_prices(frame)
+    prices = frame.Close.to_numpy(dtype=float)
+    if not {"Open", "High", "Low", "Volume"}.issubset(frame.columns):
+        return features(prices, lags)
+    enriched = make_features(frame)["all"]
+    # The rolling features are undefined during warmup; zero is an explicit
+    # neutral value and keeps the existing 14-row model warmup unchanged.
+    return np.nan_to_num(enriched, nan=0.0, posinf=0.0, neginf=0.0)
+
+
 def _fit(prices, x, origin, horizon, band, seed):
     rows = np.arange(14, origin-horizon+1)
     y = np.array([movement_label(prices[t], prices[t+horizon], band) for t in rows])
@@ -79,9 +97,9 @@ def _probabilities(model, x):
             for row in model.predict_proba(x)]
 
 
-def _backtest(frame, horizon, band, start, stop, seed):
+def _backtest(frame, horizon, band, start, stop, seed, x=None):
     prices = frame.Close.to_numpy(dtype=float)
-    x = features(prices, 14)
+    x = direction_features(frame) if x is None else x
     rows = []
     for target in range(start, stop, 30):
         indices = np.arange(target, min(target+30, stop))
@@ -139,12 +157,15 @@ def direction_experiment(frame, *, bands=None, confidence_threshold=.65, seed=42
     if len(frame) < 300:
         raise ValueError('Directional evaluation needs at least 300 consecutive daily prices')
     prices = frame.Close.to_numpy(dtype=float)
+    x = direction_features(frame)
     start, stop = int(len(frame)*.6), int(len(frame)*.8)
     if start - 2*max(bands) - 14 < 30:
         raise ValueError('Insufficient mature history for the requested directional horizons')
     report = {'schema_version': 3,
               'config': {'model': 'direction', 'bands': bands, 'confidence_threshold': confidence_threshold,
                          'seed': seed, 'refit_days': 30, 'calibration': 'chronological_sigmoid',
+                         'feature_context': 'ohlcv' if {"Open", "High", "Low", "Volume"}.issubset(frame.columns)
+                         else 'close_only',
                          'gates': {'min_calls': 30, 'min_coverage': .1, 'min_accuracy': .65,
                                    'min_accuracy_gain': .05, 'brier_no_worse_than_prior': True}},
               'data': {'rows': len(frame), 'start': frame.Date.iloc[0].strftime('%Y-%m-%d'),
@@ -156,16 +177,16 @@ def direction_experiment(frame, *, bands=None, confidence_threshold=.65, seed=42
               'holdout': {}, 'forecast': []}
     with threadpool_limits(limits=1):
         for horizon, band in sorted(bands.items()):
-            validation = _backtest(frame.iloc[:stop], horizon, band, start, stop, seed)
+            validation = _backtest(frame.iloc[:stop], horizon, band, start, stop, seed, x[:stop])
             validation_score = _score(validation, confidence_threshold)
-            final = _backtest(frame, horizon, band, stop, len(frame), seed)
+            final = _backtest(frame, horizon, band, stop, len(frame), seed, x)
             final_score = _score(final, confidence_threshold)
             qualified = validation_score['passes'] and final_score['passes']
             report['evaluation']['horizons'][str(horizon)] = {
                 'validation': validation_score, 'final': final_score, 'qualified': qualified}
             report['holdout'][str(horizon)] = final
-            model, _ = _fit(prices, features(prices, 14), len(prices)-1, horizon, band, seed)
-            probabilities = _probabilities(model, features(prices, 14)[-1:])[0]
+            model, _ = _fit(prices, x, len(prices)-1, horizon, band, seed)
+            probabilities = _probabilities(model, x[-1:])[0]
             decision = direction_decision(probabilities, qualified=qualified and model is not None,
                                           confidence_threshold=confidence_threshold)
             report['forecast'].append({

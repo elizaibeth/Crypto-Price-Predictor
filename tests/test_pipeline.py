@@ -43,6 +43,14 @@ class PipelineTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 validate_prices(frame)
 
+    def test_invalid_ohlcv_context_rejected(self):
+        bars = self.frame.assign(Open=self.frame.Close, High=self.frame.Close,
+                                 Low=self.frame.Close, Volume=100.)
+        with self.assertRaisesRegex(ValueError, 'high/low'):
+            validate_prices(bars.assign(High=bars.Close - .1))
+        with self.assertRaisesRegex(ValueError, 'OHLCV input'):
+            validate_prices(bars.drop(columns='Volume'))
+
     def test_boundary_and_config_rejected(self):
         for kwargs in [{'lookback': 40}, {'horizon': 0}, {'epochs': 0}, {'model': 'unknown'}]:
             with self.assertRaises(ValueError):

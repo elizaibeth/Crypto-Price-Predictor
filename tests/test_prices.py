@@ -14,6 +14,13 @@ def prices(start='2024-01-01', end='2024-01-10', value=100):
     return pd.DataFrame({'Date': dates, 'Close': [float(value)] * len(dates)})
 
 
+def bars(start='2024-01-01', end='2024-01-10', value=100):
+    dates = pd.date_range(start, end, tz='UTC')
+    close = pd.Series(float(value), index=dates)
+    return pd.DataFrame({'Date': dates, 'Open': close * .99, 'High': close * 1.02,
+                         'Low': close * .98, 'Close': close, 'Volume': 1000.})
+
+
 class CacheTests(unittest.TestCase):
     def setUp(self):
         self.directory = tempfile.TemporaryDirectory()
@@ -40,6 +47,13 @@ class CacheTests(unittest.TestCase):
         self.assertEqual(frame['Close'].iloc[3], 200)
         self.assertEqual(metadata['as_of'], '2024-01-12')
         self.assertEqual(metadata['missing_recent_days'], 0)
+
+    def test_ohlcv_is_persisted_and_advertised_as_feature_context(self):
+        frame, metadata = self.load(Mock(return_value=bars()))
+        self.assertEqual(metadata['feature_context'], 'ohlcv')
+        self.assertEqual(list(frame.columns), ['Date', 'Open', 'High', 'Low', 'Close', 'Volume'])
+        with sqlite3.connect(self.path) as db:
+            self.assertEqual(db.execute('SELECT volume FROM prices LIMIT 1').fetchone()[0], 1000.)
 
     def test_today_is_excluded(self):
         frame, _ = self.load(Mock(return_value=prices(end='2024-01-11')))
