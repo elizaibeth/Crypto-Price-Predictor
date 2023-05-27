@@ -35,6 +35,7 @@ class DirectionCLITests(unittest.TestCase):
             printed = json.loads(completed.stdout.split('Forecasts:\n',1)[1])
             self.assertEqual(printed, report['forecast'])
             self.assertIn('1-day: same', completed.stdout)
+            self.assertIn('Feature context: close_only', completed.stdout)
             self.assertIn('call coverage', completed.stdout)
             self.assertEqual(report['forecast'][0]['label'], 'same')
             self.assertEqual(report['forecast'][0]['date'], '2021-08-23')

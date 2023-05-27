@@ -68,6 +68,9 @@ def main():
             result = experiment(frame, args.model, args.lookback, args.horizon, args.epochs, args.seed)
         result["source"] = str(args.csv) if args.csv else args.ticker
         result['config']['history_days'] = args.history_days
+        result['config']['feature_context'] = (
+            'ohlcv' if {'Open', 'High', 'Low', 'Volume'}.issubset(frame.columns) else 'close_only'
+        )
         if args.ticker:
             result["data_access"] = data_access
         packages = ["numpy", "pandas", "scikit-learn"]
@@ -84,6 +87,7 @@ def main():
         print(f"Experiment failed: {exc}", file=sys.stderr)
         return 1
     print(f"Report: {args.output}")
+    print(f"Feature context: {result['config']['feature_context']}")
     if args.model == "direction":
         for forecast in result['forecast']:
             confidence = (f"{forecast['confidence']:.0%}" if forecast['confidence'] is not None else 'n/a')
