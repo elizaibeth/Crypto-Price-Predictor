@@ -104,8 +104,16 @@ def load_prices(ticker, cache_path=Path("artifacts/prices.sqlite3"), *, full_ref
                 downloaded = downloaded.loc[(downloaded["Date"] >= start) & (downloaded["Date"] < today)]
                 downloaded = validate_prices(downloaded)
                 downloaded_columns = ["Date", "Close"] + [c for c in BAR_COLUMNS if c != "Close" and c in downloaded]
-                merged = (pd.concat([cached[downloaded_columns], downloaded[downloaded_columns]], ignore_index=True)
-                          if not cached.empty else downloaded[downloaded_columns].copy())
+                if cached.empty:
+                    merged = downloaded[downloaded_columns].copy()
+                else:
+                    # Legacy caches may have all-NA OHLCV columns after the
+                    # schema migration. Exclude those columns from the left
+                    # input to avoid pandas' all-NA concat warning.
+                    cached_merge = cached[downloaded_columns]
+                    if not cached_has_bars:
+                        cached_merge = cached[["Date", "Close"]]
+                    merged = pd.concat([cached_merge, downloaded[downloaded_columns]], ignore_index=True)
                 merged = merged.drop_duplicates("Date", keep="last")
                 merged_has_bars = set(BAR_COLUMNS).issubset(merged.columns) and merged[list(BAR_COLUMNS)].notna().all().all()
                 frame = validate_prices(merged if merged_has_bars else merged[["Date", "Close"]])
