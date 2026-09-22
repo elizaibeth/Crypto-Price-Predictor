@@ -342,9 +342,7 @@ image and is available in the Dockerfile's `full` target.
 Use a local batch container for this scope. Serverless adds no benefit to the
 current experiment workflow. Schedule the container if regular refreshes become
 necessary; separate training from inference and version model/scaler artifacts
-if an actual API consumer appears. The
-[`aws-crypto-price-prediction/`](aws-crypto-price-prediction/) directory is historical
-source, not a supported deployment path.
+if an actual API consumer appears.
 
 - The final period was already examined in the earlier LSTM experiment. These
   results are retrospective; newly arriving data is needed for independent evidence.
